@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation and Iframe Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background-color: #f4f8fb;
+        }
+        .navigation {
+            width: 20%;
+            height: 100vh;
+            background-color: #1b1c20;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .iframe-container {
+            width: 80%;
+            height: 100vh;
+            display: flex;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .add-button, .lock-button {
+            position: fixed;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            font-size: 30px;
+            text-align: center;
+            line-height: 30px;
+            display: none; /* Hidden initially */
+        }
+        .add-button {
+            bottom: 20px;
+            right: 20px;
+            width: 70px;
+            height: 70px;
+			background-color: #3498db;
+        }
+        .lock-button {
+            bottom: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            display: block; /* Ensure the lock button is visible */
+			background-color: #1b1c20;
+        }
+        
+		.add-button:hover{
+            background-color: #2980b9;
+        }
+		
+		.lock-button:hover {
+            background-color: #2c2d32;
+		}
+			
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+            width: 300px;
+        }
+        .popup input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .popup button {
+            width: 100%;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .popup button:hover {
+            background-color: #2980b9;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9;
+        }
+        .nav-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            align-items: center;
+            padding: 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        .nav-item:hover {
+            background-color: #2c2d32;
+        }
+        .nav-item a {
+            color: white;
+            text-decoration: none;
+            flex-grow: 1;
+        }
+        .remove-btn {
+            background-color: #1b1c20;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: none; /* Hidden initially */
+        }
+        .remove-btn:hover {
+            background-color: #4b4d54;
+        }
+        #passwordPopup {
+            position: fixed;
+            bottom: 80px;
+            left: 20px;
+            display: none;
+        }
+        #passwordInput {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navigation" id="nav">
+        <h2>Navigation</h2>
+    </div>
+
+    <div class="iframe-container">
+        <iframe id="iframe" src="https://www.example.com"></iframe>
+    </div>
+
+    <!-- Add IFrame button, hidden initially -->
+    <button class="add-button" id="addIframeBtn">+</button>
+
+    <!-- Lock button to unlock adding/removing functionality -->
+    <button class="lock-button" id="lockBtn">🔒</button>
+
+    <!-- Password input field -->
+    <div id="passwordPopup">
+        <input type="password" id="passwordInput" placeholder="Enter Password">
+    </div>
+
+    <!-- Popup for adding new IFrame -->
+    <div class="popup" id="popup">
+        <h3>Add New IFrame</h3>
+        <input type="text" id="titleInput" placeholder="Title for Navigation" required>
+        <input type="url" id="linkInput" placeholder="https://example.com" required>
+        <button id="addIframe">Add IFrame</button>
+    </div>
+
+    <!-- Overlay for the popup -->
+    <div class="overlay" id="overlay"></div>
+
+    <script>
+        const addIframeBtn = document.getElementById('addIframeBtn');
+        const popup = document.getElementById('popup');
+        const overlay = document.getElementById('overlay');
+        const addIframe = document.getElementById('addIframe');
+        const nav = document.getElementById('nav');
+        const iframe = document.getElementById('iframe');
+        const lockBtn = document.getElementById('lockBtn');
+        const passwordPopup = document.getElementById('passwordPopup');
+        const passwordInput = document.getElementById('passwordInput');
+        const correctPassword = '123456';
+        let isUnlocked = false;
+
+        // Load saved iframes and titles from localStorage
+        window.onload = function() {
+            const savedItems = JSON.parse(localStorage.getItem('navItems')) || [];
+            savedItems.forEach(item => {
+                addNavItem(item.title, item.link, false);
+            });
+        };
+
+        // Open popup for adding a new iframe
+        addIframeBtn.addEventListener('click', () => {
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+        });
+
+        // Close popup when clicking on overlay
+        overlay.addEventListener('click', () => {
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+        });
+
+        // Add new iframe and navigation title
+        addIframe.addEventListener('click', () => {
+            const title = document.getElementById('titleInput').value;
+            const link = document.getElementById('linkInput').value;
+
+            if (title && link) {
+                addNavItem(title, link, true);
+                popup.style.display = 'none';
+                overlay.style.display = 'none';
+                document.getElementById('titleInput').value = '';
+                document.getElementById('linkInput').value = '';
+            } else {
+                alert('Please fill out both fields');
+            }
+        });
+
+        // Function to add nav item and iframe
+        function addNavItem(title, link, save) {
+            const newNavItem = document.createElement('div');
+            newNavItem.classList.add('nav-item');
+            newNavItem.innerHTML = `
+                <a href="#" onclick="changeIframe('${link}')">${title}</a>
+                <button class="remove-btn" onclick="removeNavItem(this, '${title}')">X</button>
+            `;
+            nav.appendChild(newNavItem);
+
+            if (save) {
+                const savedItems = JSON.parse(localStorage.getItem('navItems')) || [];
+                savedItems.push({ title, link });
+                localStorage.setItem('navItems', JSON.stringify(savedItems));
+            }
+        }
+
+        // Function to change iframe source
+        function changeIframe(url) {
+            iframe.src = url;
+        }
+
+        // Function to remove nav item and its corresponding iframe
+        function removeNavItem(button, title) {
+            const savedItems = JSON.parse(localStorage.getItem('navItems')) || [];
+            const updatedItems = savedItems.filter(item => item.title !== title);
+            localStorage.setItem('navItems', JSON.stringify(updatedItems));
+
+            button.parentElement.remove();
+        }
+
+        // Toggle lock to show add/remove buttons
+        lockBtn.addEventListener('click', () => {
+            if (!isUnlocked) {
+                // Show password input
+                passwordPopup.style.display = 'block';
+            } else {
+                // Lock the UI again
+                lockUI();
+            }
+        });
+
+        // Check password to unlock functionality
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (passwordInput.value === correctPassword) {
+                    unlockUI();
+                    passwordPopup.style.display = 'none';
+                    passwordInput.value = ''; // Clear password input
+                } else {
+                    alert('Incorrect password');
+                    passwordInput.value = '';
+                }
+            }
+        });
+
+        // Unlock the UI
+        function unlockUI() {
+            isUnlocked = true;
+            addIframeBtn.style.display = 'block'; // Show the add button
+            document.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.style.display = 'block'; // Show all remove buttons
+            });
+            lockBtn.textContent = '🔓'; // Change the lock icon
+        }
+
+        // Lock the UI
+        function lockUI() {
+            isUnlocked = false;
+            addIframeBtn.style.display = 'none'; // Hide the add button
+            document.querySelectorAll('.remove-btn').forEach(btn => {
+                btn.style.display = 'none'; // Hide all remove buttons
+            });
+            lockBtn.textContent = '🔒'; // Change the lock icon
+        }
+    </script>
+
+</body>
+</html>
